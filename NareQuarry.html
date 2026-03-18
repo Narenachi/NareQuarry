@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NareQuarry</title>
+<style>
+/* ── Reset ───────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 14px; }
+body { background: #0b0f1a; color: #dde3f0; font-family: 'Segoe UI', system-ui, sans-serif; line-height: 1.6; min-height: 100vh; }
+svg { display: inline-block; vertical-align: middle; flex-shrink: 0; }
+
+/* ── Two-column shell ────────────────────────────────────────────────────── */
+.shell { display: grid; grid-template-columns: 300px 1fr; align-items: start; min-height: 100vh; }
+
+/* ── Sidebar ─────────────────────────────────────────────────────────────── */
+.sidebar {
+  position: sticky; top: 0; height: 100vh; overflow-y: auto;
+  background: #111827; border-right: 1px solid #1f2937;
+  padding: 22px 18px 18px; display: flex; flex-direction: column; gap: 20px;
+}
+.sidebar::-webkit-scrollbar { width: 4px; }
+.sidebar::-webkit-scrollbar-thumb { background: #1f2937; border-radius: 2px; }
+
+/* Logo */
+.logo { display: flex; align-items: center; gap: 10px; padding-bottom: 16px; border-bottom: 1px solid #1f2937; }
+.logo-icon { color: #60a5fa; }
+.logo-name { font-size: 17px; font-weight: 700; color: #f1f5f9; letter-spacing: -.3px; }
+.logo-desc { font-size: 10px; color: #4b5563; letter-spacing: .6px; text-transform: uppercase; margin-top: 1px; }
+
+/* Field labels */
+.flabel { font-size: 10px; font-weight: 700; letter-spacing: .9px; text-transform: uppercase; color: #374151; display: flex; align-items: center; gap: 5px; margin-bottom: 7px; }
+.flabel svg { color: #3b82f6; }
+
+/* Textarea / number inputs */
+textarea, input[type=number], input[type=text] {
+  background: #0b0f1a; color: #dde3f0;
+  border: 1px solid #1f2937; border-radius: 8px;
+  padding: 9px 11px; outline: none;
+  font-family: 'Consolas', monospace; font-size: 12px;
+  transition: border-color .15s, box-shadow .15s;
+  resize: vertical; width: 100%;
+}
+textarea:focus, input[type=number]:focus, input[type=text]:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.12); }
+input[type=number] { width: 80px; resize: none; font-family: inherit; font-size: 13px; }
+input[type=text] { resize: none; }
+
+/* Year row */
+.year-row { display: flex; align-items: center; gap: 8px; }
+.year-sep { color: #374151; font-size: 13px; }
+
+/* Chips */
+.chip-group { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { display: flex; align-items: center; gap: 5px; padding: 5px 13px; background: #0b0f1a; border: 1px solid #1f2937; border-radius: 20px; font-size: 12px; color: #6b7280; cursor: pointer; transition: all .15s; user-select: none; }
+.chip input { display: none; }
+.chip:has(input:checked) { border-color: #3b82f6; color: #60a5fa; background: rgba(59,130,246,.08); }
+.chip:hover { border-color: rgba(59,130,246,.35); color: #9ca3af; }
+
+/* DB items */
+.db-list { display: flex; flex-direction: column; gap: 5px; }
+.db-item { display: flex; align-items: center; gap: 9px; padding: 8px 11px; background: #0b0f1a; border: 1px solid #1f2937; border-radius: 8px; cursor: pointer; transition: border-color .15s, background .15s; user-select: none; }
+.db-item:has(input:checked) { border-color: #1e3a5f; background: #0d1e2e; }
+.db-item input { display: none; }
+.db-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.db-name { font-size: 12.5px; color: #cbd5e1; flex: 1; }
+.db-check { color: #3b82f6; opacity: 0; transition: opacity .15s; }
+.db-item:has(input:checked) .db-check { opacity: 1; }
+
+/* Search button */
+.btn-search { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 16px; background: linear-gradient(135deg,#1d4ed8,#3b82f6); color: #fff; font-size: 13px; font-weight: 700; border: none; border-radius: 10px; cursor: pointer; letter-spacing: .2px; margin-top: auto; transition: opacity .15s, transform .1s, box-shadow .15s; box-shadow: 0 4px 14px rgba(59,130,246,.22); }
+.btn-search:hover:not(:disabled) { opacity: .9; transform: translateY(-1px); box-shadow: 0 6px 18px rgba(59,130,246,.3); }
+.btn-search:active:not(:disabled) { transform: translateY(0); }
+.btn-search:disabled { opacity: .38; cursor: not-allowed; transform: none; box-shadow: none; }
+
+/* ── Main area ────────────────────────────────────────────────────────────── */
+.main { padding: 26px 28px 0; display: flex; flex-direction: column; gap: 18px; }
+
+/* Top bar */
+.topbar { padding-bottom: 16px; border-bottom: 1px solid #1f2937; }
+.topbar-title { font-size: 16px; font-weight: 600; color: #f1f5f9; }
+.topbar-sub { font-size: 11.5px; color: #374151; margin-top: 3px; }
+
+/* Progress */
+.progress-wrap { height: 3px; background: #1f2937; border-radius: 2px; overflow: hidden; display: none; }
+.progress-wrap.on { display: block; }
+.progress-bar { height: 100%; width: 45%; background: linear-gradient(90deg,#1d4ed8,#60a5fa); border-radius: 2px; animation: pslide 1.4s ease-in-out infinite; }
+@keyframes pslide { 0%{margin-left:-45%} 100%{margin-left:100%} }
+@keyframes spin   { to{transform:rotate(360deg)} }
+
+/* Log */
+.log-panel { background: #070b12; border: 1px solid #1f2937; border-radius: 10px; padding: 11px 15px; height: 148px; overflow-y: auto; font-family: 'Consolas',monospace; font-size: 11.5px; color: #22c55e; line-height: 1.7; }
+.log-panel::-webkit-scrollbar { width: 4px; }
+.log-panel::-webkit-scrollbar-thumb { background: #1f2937; border-radius: 2px; }
+.log-err  { color: #f87171; }
+.log-ok   { color: #22c55e; }
+.log-info { color: #f59e0b; }
+
+/* Stats */
+.stats-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.stat-card { flex: 1; min-width: 88px; background: #111827; border: 1px solid #1f2937; border-radius: 10px; padding: 11px 14px; text-align: center; }
+.stat-card .n { font-size: 21px; font-weight: 700; color: #60a5fa; }
+.stat-card .l { font-size: 10px; color: #4b5563; margin-top: 1px; }
+.stat-total .n { color: #4ade80; }
+
+/* Export buttons row */
+.export-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.btn-export { display: inline-flex; align-items: center; gap: 7px; padding: 8px 16px; background: #052e16; border: 1px solid rgba(21,128,61,.35); color: #4ade80; font-size: 12px; font-weight: 600; border-radius: 8px; cursor: pointer; transition: background .15s; }
+.btn-export:hover { background: #14532d; }
+.btn-export-sel { background: #0c1a2e; border-color: rgba(37,99,235,.35); color: #93c5fd; }
+.btn-export-sel:hover { background: #1e3a5f; }
+
+/* Filter bar */
+.filter-bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.filter-bar input[type=text] { width: 160px; padding: 7px 10px; font-size: 12px; border-radius: 7px; }
+.sort-select {
+  background: #0b0f1a; color: #9ca3af; border: 1px solid #1f2937; border-radius: 7px;
+  padding: 7px 10px; font-size: 12px; outline: none; cursor: pointer;
+  transition: border-color .15s;
+}
+.sort-select:focus { border-color: #3b82f6; }
+.filter-label { font-size: 10px; color: #374151; white-space: nowrap; }
+
+/* Table */
+.table-scroll { overflow-x: hidden; overflow-y: auto; max-height: 620px; border: 1px solid #1f2937; border-radius: 10px; }
+.table-scroll::-webkit-scrollbar { width: 5px; }
+.table-scroll::-webkit-scrollbar-track { background: #0b0f1a; }
+.table-scroll::-webkit-scrollbar-thumb { background: #1f2937; border-radius: 3px; }
+table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 12px; }
+thead { position: sticky; top: 0; z-index: 3; }
+th { background: #0d1220; color: #374151; font-size: 10px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; padding: 10px 14px; text-align: left; border-bottom: 1px solid #1f2937; white-space: nowrap; overflow: hidden; }
+td { padding: 10px 14px; vertical-align: top; border-bottom: 1px solid #0f1520; word-break: break-word; }
+/* Compact secondary info under article title */
+.art-meta  { font-size: 11px; color: #4b5563; margin-top: 4px; line-height: 1.5; }
+.art-meta span { color: #374151; }
+.art-doi   { font-family: 'Consolas',monospace; font-size: 10px; color: #374151; word-break: break-all; }
+tr.db-pubmed    td { background: #0c1a2e; }
+tr.db-europepmc td { background: #0c1e14; }
+tr.db-openalex  td { background: #18150a; }
+tr.db-semantic  td { background: #180c1e; }
+tr:hover td { filter: brightness(1.14); }
+
+/* Checkbox in table */
+input[type=checkbox] { accent-color: #3b82f6; cursor: pointer; width: 13px; height: 13px; }
+
+/* Tags */
+.db-tag { display: inline-flex; align-items: center; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; white-space: nowrap; }
+.db-tag-pubmed    { background:#1e3a5f; color:#93c5fd; }
+.db-tag-europepmc { background:#14532d; color:#86efac; }
+.db-tag-openalex  { background:#451a03; color:#fcd34d; }
+.db-tag-semantic  { background:#3b0764; color:#d8b4fe; }
+.lang-tag { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; letter-spacing: .5px; }
+.lang-en { background:#1e3a5f; color:#93c5fd; }
+.lang-pl { background:#4c0519; color:#fca5a5; }
+.lang-xx { background:#1f2937; color:#6b7280; }
+
+/* Hits badge (multi-DB relevance) */
+.hits-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 10px; background: rgba(250,204,21,.12); color: #fbbf24; border: 1px solid rgba(250,204,21,.2); margin-left: 5px; }
+
+/* Citations */
+.cit-count { font-size: 11px; color: #a78bfa; font-weight: 600; }
+.cit-na { color: #374151; font-size: 11px; }
+
+/* Title cell */
+.title-text { color: #cbd5e1; line-height: 1.45; }
+.title-translation { margin-top: 6px; font-size: 11px; color: #f59e0b; font-style: italic; line-height: 1.4; display: none; border-left: 2px solid #f59e0b40; padding-left: 7px; }
+
+/* Citation box */
+.cite-box { display: none; margin-top: 7px; font-size: 11px; color: #94a3b8; line-height: 1.5; background: #0d1220; border: 1px solid #1f2937; border-radius: 6px; padding: 8px 10px; position: relative; }
+.cite-copy-btn { position: absolute; top: 6px; right: 6px; background: transparent; border: 1px solid #1f2937; color: #4b5563; font-size: 10px; padding: 2px 6px; border-radius: 4px; cursor: pointer; transition: color .15s, border-color .15s; }
+.cite-copy-btn:hover { color: #60a5fa; border-color: rgba(96,165,250,.45); }
+
+/* Generic translate / expand buttons */
+.btn-xl {
+  display: inline-flex; align-items: center; gap: 4px;
+  margin-top: 5px; background: transparent;
+  border: 1px solid #1f2937; color: #4b5563;
+  font-size: 10px; padding: 3px 8px; border-radius: 5px;
+  cursor: pointer; transition: border-color .15s, color .15s;
+}
+.btn-xl:hover:not(:disabled) { border-color: rgba(96,165,250,.45); color: #60a5fa; }
+.btn-xl:disabled { opacity: .3; cursor: default; }
+.btn-xl-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 5px; }
+
+/* DOI cell */
+.doi-code { font-size: 10px; color: #374151; font-family: 'Consolas',monospace; word-break: break-all; display: block; margin-bottom: 5px; }
+.doi-btns { display: flex; gap: 5px; flex-wrap: wrap; }
+.btn-open { display: inline-flex; align-items: center; gap: 4px; padding: 4px 9px; background: #1e3a5f; border: 1px solid rgba(37,99,235,.3); color: #93c5fd; font-size: 10px; font-weight: 600; border-radius: 5px; text-decoration: none; transition: background .15s; white-space: nowrap; }
+.btn-open:hover { background: #1e40af; }
+.btn-copy-doi { display: inline-flex; align-items: center; gap: 4px; padding: 4px 9px; background: transparent; border: 1px solid #1f2937; color: #4b5563; font-size: 10px; font-weight: 600; border-radius: 5px; cursor: pointer; transition: all .15s; white-space: nowrap; }
+.btn-copy-doi:hover { border-color: rgba(96,165,250,.45); color: #60a5fa; }
+.cell-none { color: #1f2937; font-size: 11px; }
+
+/* Abstract */
+.abstract-text { max-height: 52px; overflow: hidden; color: #6b7280; line-height: 1.55; }
+.abstract-text.open { max-height: none; }
+.abstract-toggle { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; color: #2563eb; cursor: pointer; background: none; border: none; padding: 0; }
+.abstract-toggle:hover { color: #60a5fa; }
+.abstract-translation { margin-top: 6px; font-size: 11px; color: #f59e0b; font-style: italic; line-height: 1.55; display: none; border-left: 2px solid #f59e0b40; padding-left: 7px; }
+
+/* Footer */
+footer { margin-top: 40px; padding: 22px 28px; border-top: 1px solid #1f2937; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.footer-left { font-size: 11px; color: #374151; line-height: 1.7; }
+.footer-right { font-size: 11px; color: #374151; text-align: right; }
+.footer-right a { color: #3b82f6; text-decoration: none; }
+.footer-right a:hover { text-decoration: underline; }
+.footer-disclaimer { font-size: 10px; color: #374151; margin-top: 4px; font-style: italic; }
+
+/* Result section */
+#resultSection { display: none; }
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #1f2937; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- ═══ SVG SYMBOLS ════════════════════════════════════════════════════════ -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+  <symbol id="i-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M9 3H5a2 2 0 0 0-2 2v4"/><path d="M9 3h6"/><path d="M15 3h4a2 2 0 0 1 2 2v4"/>
+    <path d="M3 9v6"/><path d="M21 9v6"/>
+    <path d="M3 15v2a2 2 0 0 0 2 2h4"/><path d="M21 15v2a2 2 0 0 1-2 2h-4"/>
+    <path d="M9 21h6"/><circle cx="12" cy="12" r="3"/>
+  </symbol>
+  <symbol id="i-search"   viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"   stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></symbol>
+  <symbol id="i-text"     viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></symbol>
+  <symbol id="i-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+  <symbol id="i-globe"    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M2 12h20M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></symbol>
+  <symbol id="i-hash"     viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></symbol>
+  <symbol id="i-db"       viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/></symbol>
+  <symbol id="i-check"    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"   stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
+  <symbol id="i-translate" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></symbol>
+  <symbol id="i-link"     viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"   stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></symbol>
+  <symbol id="i-log"      viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></symbol>
+  <symbol id="i-chev-d"   viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"   stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></symbol>
+  <symbol id="i-chev-u"   viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"   stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></symbol>
+  <symbol id="i-spin"     viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"   stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.2-8.6"/></symbol>
+  <symbol id="i-copy"     viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+  <symbol id="i-quote"    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"/><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"/></symbol>
+  <symbol id="i-mesh"     viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></symbol>
+</svg>
+
+<!-- ═══ SHELL ══════════════════════════════════════════════════════════════ -->
+<div class="shell">
+
+  <!-- ── SIDEBAR ─────────────────────────────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="logo">
+      <span class="logo-icon"><svg width="26" height="26"><use href="#i-logo"/></svg></span>
+      <div>
+        <div class="logo-name">NareQuarry</div>
+        <div class="logo-desc">Literatura naukowa</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="flabel"><svg width="12" height="12"><use href="#i-text"/></svg> Frazy kluczowe</div>
+      <textarea id="phrases" rows="5" placeholder="Każda fraza w nowej linii…">machine learning
+artificial intelligence
+deep learning</textarea>
+    </div>
+
+    <div>
+      <div class="flabel"><svg width="12" height="12"><use href="#i-mesh"/></svg> Własne terminy MeSH</div>
+      <textarea id="customMesh" rows="3" placeholder="Jeden termin MeSH na linię…&#10;(dodane do PubMed i Europe PMC)"></textarea>
+      <div style="margin-top:5px;font-size:10px;color:#374151;">Uzupełniają auto-mapowanie MeSH dla wszystkich fraz</div>
+    </div>
+
+    <div>
+      <div class="flabel"><svg width="12" height="12"><use href="#i-calendar"/></svg> Zakres lat</div>
+      <div class="year-row">
+        <input type="number" id="yearFrom" value="2015" min="1900" max="2099">
+        <span class="year-sep">—</span>
+        <input type="number" id="yearTo"   value="2025" min="1900" max="2099">
+      </div>
+    </div>
+
+    <div>
+      <div class="flabel"><svg width="12" height="12"><use href="#i-globe"/></svg> Język</div>
+      <div class="chip-group">
+        <label class="chip"><input type="radio" name="lang" value="both" checked><svg width="11" height="11"><use href="#i-globe"/></svg><span>Oba</span></label>
+        <label class="chip"><input type="radio" name="lang" value="en"><span>EN</span></label>
+        <label class="chip"><input type="radio" name="lang" value="pl"><span>PL</span></label>
+      </div>
+      <div style="margin-top:8px;font-size:10px;color:#374151;">Tłumaczenia: MyMemory Translation API</div>
+    </div>
+
+    <div>
+      <div class="flabel"><svg width="12" height="12"><use href="#i-hash"/></svg> Maks. wyników / baza</div>
+      <div class="chip-group">
+        <label class="chip"><input type="radio" name="maxres" value="50" checked><span>50</span></label>
+        <label class="chip"><input type="radio" name="maxres" value="100"><span>100</span></label>
+        <label class="chip"><input type="radio" name="maxres" value="200"><span>200</span></label>
+      </div>
+    </div>
+
+    <div>
+      <div class="flabel"><svg width="12" height="12"><use href="#i-db"/></svg> Bazy danych</div>
+      <div class="db-list">
+        <label class="db-item"><input type="checkbox" id="db_pubmed" checked>
+          <span class="db-dot" style="background:#3b82f6"></span><span class="db-name">PubMed</span>
+          <svg class="db-check" width="13" height="13"><use href="#i-check"/></svg></label>
+        <label class="db-item"><input type="checkbox" id="db_europepmc" checked>
+          <span class="db-dot" style="background:#22c55e"></span><span class="db-name">Europe PMC</span>
+          <svg class="db-check" width="13" height="13"><use href="#i-check"/></svg></label>
+        <label class="db-item"><input type="checkbox" id="db_openalex" checked>
+          <span class="db-dot" style="background:#f59e0b"></span><span class="db-name">OpenAlex</span>
+          <svg class="db-check" width="13" height="13"><use href="#i-check"/></svg></label>
+        <label class="db-item"><input type="checkbox" id="db_semantic" checked>
+          <span class="db-dot" style="background:#a855f7"></span><span class="db-name">Semantic Scholar</span>
+          <svg class="db-check" width="13" height="13"><use href="#i-check"/></svg></label>
+      </div>
+    </div>
+
+    <button class="btn-search" id="btnSearch" onclick="triggerSearch()">
+      <svg width="15" height="15"><use href="#i-search"/></svg> Szukaj
+    </button>
+  </aside>
+
+  <!-- ── MAIN ────────────────────────────────────────────────────────────── -->
+  <div style="display:flex;flex-direction:column;min-height:100vh">
+  <main class="main">
+
+    <div class="topbar">
+      <div class="topbar-title">Wyniki wyszukiwania</div>
+      <div class="topbar-sub" id="topbarSub">Skonfiguruj parametry po lewej i kliknij Szukaj</div>
+    </div>
+
+    <div class="progress-wrap" id="progressWrap"><div class="progress-bar"></div></div>
+
+    <div>
+      <div class="flabel" style="margin-bottom:8px"><svg width="12" height="12"><use href="#i-log"/></svg> Postęp</div>
+      <div class="log-panel" id="log">Gotowy do pracy…</div>
+    </div>
+
+    <div id="resultSection">
+      <div class="stats-row" id="statsRow"></div>
+
+      <div class="export-row">
+        <button class="btn-export" onclick="exportExcel(false)">
+          <svg width="13" height="13"><use href="#i-download"/></svg> Pobierz Excel (wszystkie)
+        </button>
+        <button class="btn-export btn-export-sel" id="btnExportSel" onclick="exportExcel(true)">
+          <svg width="13" height="13"><use href="#i-download"/></svg> Eksportuj zaznaczone
+        </button>
+      </div>
+
+      <div class="filter-bar">
+        <span class="filter-label">Filtruj:</span>
+        <input type="text" id="filterAuthor"  placeholder="autor…"      oninput="applyFiltersAndSort()" style="width:150px">
+        <input type="text" id="filterJournal" placeholder="czasopismo…" oninput="applyFiltersAndSort()" style="width:150px">
+        <select class="sort-select" id="sortMode" onchange="applyFiltersAndSort()">
+          <option value="default">Kolejność wyników</option>
+          <option value="relevance">Trafność (wiele baz)</option>
+          <option value="year_desc">Rok — malejąco</option>
+          <option value="year_asc">Rok — rosnąco</option>
+          <option value="citations_desc">Cytowania — malejąco</option>
+        </select>
+      </div>
+
+      <div class="table-scroll">
+        <table>
+          <thead><tr>
+            <th style="width:32px;text-align:center"><input type="checkbox" id="chkAll" onchange="toggleSelectAll(this)" title="Zaznacz wszystko"></th>
+            <th style="width:30px">#</th>
+            <th>Artykuł</th>
+            <th style="width:46px">Rok</th>
+            <th style="width:52px">Cyt.</th>
+            <th style="width:46px">Język</th>
+            <th style="width:110px">Baza</th>
+          </tr></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ── FOOTER ──────────────────────────────────────────────────────────── -->
+  <footer>
+    <div class="footer-left">
+      Źródła: PubMed (NCBI) · Europe PMC (EBI) · OpenAlex · Semantic Scholar
+    </div>
+    <div class="footer-right">
+      Autor:<br>
+      <a href="https://github.com/Narenachi" target="_blank" style="display:inline-flex;align-items:center;gap:6px;margin-top:5px;text-decoration:none;color:#e2e8f0;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="color:#e2e8f0"><path d="M12 2C6.477 2 2 6.484 2 12.021c0 4.428 2.865 8.184 6.839 9.504.5.092.682-.217.682-.482 0-.237-.009-.868-.014-1.703-2.782.605-3.369-1.342-3.369-1.342-.454-1.154-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.026 2.747-1.026.546 1.378.202 2.397.1 2.65.64.7 1.028 1.595 1.028 2.688 0 3.848-2.338 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482C19.138 20.2 22 16.447 22 12.021 22 6.484 17.523 2 12 2z"/></svg>
+        <strong>Narenachi</strong>
+      </a>
+      <div class="footer-disclaimer">Narzędzie wyłącznie do celów przeglądowych.<br>Zawsze weryfikuj dane w oryginalnych źródłach.</div>
+    </div>
+  </footer>
+  </div>
+
+</div><!-- .shell -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+/* ══ State ══════════════════════════════════════════════════════════════════ */
+let allResults     = [];   // full deduped results
+let displayResults = [];   // filtered + sorted view
+const selectedSet  = new Set();  // _id keys of selected rows
+const titleTransCache = new Map();
+const absTransCache   = new Map();
+let lastPhrases = [], lastY0 = 2015, lastY1 = 2025;
+let _searchTimer  = null;
+
+/* ══ Helpers ════════════════════════════════════════════════════════════════ */
+const sleep   = ms => new Promise(r => setTimeout(r, ms));
+const escHtml = s  => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+/* ── Per-database query builders ── */
+function buildQueryPubMed(resolved) {
+  const parts = resolved.map(r => {
+    const p = [`"${r.english}"[Title/Abstract]`];
+    r.mesh.forEach(m => p.push(`"${m}"[MeSH Terms]`));
+    return p.length > 1 ? `(${p.join(' OR ')})` : p[0];
+  });
+  return parts.join(' OR ');
+}
+function buildQueryEPMC(resolved) {
+  const parts = resolved.map(r => {
+    const p = [`"${r.english}"`];
+    r.mesh.forEach(m => p.push(`MESH:"${m}"`));
+    return p.length > 1 ? `(${p.join(' OR ')})` : p[0];
+  });
+  return parts.join(' OR ');
+}
+function buildQueryGeneral(resolved) {
+  return resolved.map(r => `"${r.english}"`).join(' OR ');
+}
+
+/* ══ Terminology resolution ════════════════════════════════════════════════ */
+async function resolveTerms(phrases) {
+  log('[Terminologia] Przetwarzam frazy kluczowe…','log-info');
+
+  /* custom MeSH from sidebar textarea (applied to all phrases) */
+  const customMeshRaw = (document.getElementById('customMesh').value||'')
+    .split('\n').map(s=>s.trim()).filter(Boolean);
+  if (customMeshRaw.length) log(`[Terminologia] Własne MeSH: ${customMeshRaw.join(' | ')}`, 'log-ok');
+
+  const resolved = [];
+  for (const phrase of phrases) {
+    const orig = phrase.trim();
+    if (!orig) continue;
+
+    /* Step 1: translate to English if Polish chars detected */
+    let english = orig;
+    const isPolish = /[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/.test(orig);
+    if (isPolish) {
+      try {
+        await sleep(200);
+        const t = await translateChunked(orig, 'pl');
+        if (t && t.trim() && t.trim() !== orig) {
+          english = t.trim();
+          log(`[Terminologia] "${orig}" → EN: "${english}"`, 'log-ok');
+        }
+      } catch(_) { log(`[Terminologia] Błąd tłumaczenia "${orig}"`, 'log-err'); }
+    } else {
+      log(`[Terminologia] "${orig}" (EN)`, 'log-ok');
+    }
+
+    /* Step 2: MeSH via NLM MeSH Lookup API */
+    const mesh = [...customMeshRaw]; // start with custom terms
+    try {
+      await sleep(250);
+      const meshResp = await fetch(
+        `https://id.nlm.nih.gov/mesh/lookup/descriptor?label=${encodeURIComponent(english)}&match=contains&limit=3`,
+        { signal: AbortSignal.timeout(10000) }
+      );
+      if (meshResp.ok) {
+        const meshList = await meshResp.json();
+        (meshList||[]).forEach(item => {
+          const t = (item.label||'').trim();
+          if (t && !mesh.some(m => m.toLowerCase() === t.toLowerCase())) mesh.push(t);
+        });
+      }
+      const autoMesh = mesh.filter(m => !customMeshRaw.includes(m));
+      if (autoMesh.length) log(`[MeSH] "${english}" → ${autoMesh.join(' | ')}`, 'log-ok');
+      else                 log(`[MeSH] "${english}" → brak auto-sugestii`, 'log-info');
+    } catch(e) {
+      log(`[MeSH] Pominięto (${e.message.includes('fetch')?'CORS/sieć':e.message}) — używam tylko EN`, 'log-info');
+    }
+
+    resolved.push({ original: orig, english, mesh });
+  }
+  log('[Terminologia] Gotowe — rozpoczynam wyszukiwanie…','log-ok');
+  return resolved;
+}
+
+/* ══ Fetch helper ═══════════════════════════════════════════════════════════ */
+async function fetchJSON(url, params) {
+  const qs = new URLSearchParams(params).toString();
+  const r  = await fetch(url+(qs?'?'+qs:''), {signal:AbortSignal.timeout(30000)});
+  if (!r.ok) throw new Error('HTTP '+r.status);
+  return r.json();
+}
+
+/* ══ Language helpers ═══════════════════════════════════════════════════════ */
+function normLang(c) {
+  if (!c) return '';
+  const s = c.toLowerCase().trim();
+  if (s==='eng'||s==='en'||s==='english') return 'en';
+  if (s==='pol'||s==='pl'||s==='polish')  return 'pl';
+  return s.length >= 2 ? s.slice(0,2) : s;
+}
+function detectLang(title) {
+  return /[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/.test(title||'') ? 'pl' : 'en';
+}
+function resolvedLang(apiLang, title, userLangFilter) {
+  const a = normLang(apiLang);
+  if (a) return a;
+  if (userLangFilter !== 'both') return userLangFilter;
+  return detectLang(title);
+}
+
+/* ══ Translation (MyMemory) ═════════════════════════════════════════════════ */
+async function translateChunked(text, srcLang) {
+  if (!text) return '';
+  const CHUNK = 450;
+  const chunks = [];
+  let rem = text.trim();
+  while (rem.length > 0) {
+    if (rem.length <= CHUNK) { chunks.push(rem); break; }
+    let cut = rem.lastIndexOf(' ', CHUNK);
+    if (cut < 100) cut = CHUNK;
+    chunks.push(rem.slice(0, cut));
+    rem = rem.slice(cut).trim();
+  }
+  const parts = [];
+  for (let i = 0; i < chunks.length; i++) {
+    try {
+      if (i > 0) await sleep(600);
+      const d = await (await fetch(
+        `https://api.mymemory.translated.net/get?q=${encodeURIComponent(chunks[i])}&langpair=${srcLang}|pl`,
+        {signal:AbortSignal.timeout(12000)}
+      )).json();
+      parts.push(d?.responseData?.translatedText || chunks[i]);
+    } catch(_) { parts.push(chunks[i]); }
+  }
+  return parts.join(' ');
+}
+
+/* ══ Log ════════════════════════════════════════════════════════════════════ */
+function log(msg, cls='') {
+  const el = document.getElementById('log');
+  const d  = document.createElement('div');
+  if (cls) d.className = cls;
+  d.textContent = msg;
+  el.appendChild(d);
+  el.scrollTop = el.scrollHeight;
+}
+
+/* ══ API: PubMed ════════════════════════════════════════════════════════════ */
+async function searchPubMed(resolved, y0, y1, max, lang) {
+  log('[PubMed] Szukam…','log-info');
+  const res=[]; const base=buildQueryPubMed(resolved); if(!base) return res;
+  const lf = lang==='en'?' AND English[lang]':lang==='pl'?' AND Polish[lang]':'';
+  const q  = base+lf+` AND (${y0}:${y1}[pdat])`;
+  try {
+    const d = await fetchJSON('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi',
+      {db:'pubmed',term:q,retmax:max,retmode:'json'});
+    const pmids = d?.esearchresult?.idlist||[];
+    log(`[PubMed] Znaleziono ${pmids.length} PMIDów`,'log-ok');
+    for (let i=0;i<pmids.length;i+=20) {
+      await sleep(400);
+      try {
+        const s = await fetchJSON('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi',
+          {db:'pubmed',id:pmids.slice(i,i+20).join(','),retmode:'json'});
+        const rv = s?.result||{};
+        for (const id of pmids.slice(i,i+20)) {
+          const a=rv[id]; if(!a||id==='uids') continue;
+          const authors=(a.authors||[]).slice(0,5).map(x=>x.name).join('; ')+((a.authors||[]).length>5?' et al.':'');
+          let doi=''; for(const x of(a.articleids||[])){if(x.idtype==='doi'){doi=x.value;break;}}
+          const title=(a.title||'').replace(/\.$/,'');
+          res.push({title,authors,year:(a.pubdate||'').slice(0,4),
+            journal:a.fulljournalname||'',doi,abstract:'',citations:null,
+            db:'PubMed',lang:resolvedLang('',title,lang)});
+        }
+      } catch(e){log(`[PubMed] Błąd batch: ${e.message}`,'log-err');}
+    }
+  } catch(e){log(`[PubMed] Błąd: ${e.message}`,'log-err');}
+  log(`[PubMed] Pobrano ${res.length} rekordów`,'log-ok');
+  return res;
+}
+
+/* ══ API: Europe PMC ════════════════════════════════════════════════════════ */
+async function searchEuropePMC(resolved, y0, y1, max, lang) {
+  log('[Europe PMC] Szukam…','log-info');
+  const res=[]; const base=buildQueryEPMC(resolved); if(!base) return res;
+  const lf=lang==='en'?' AND LANG:eng':lang==='pl'?' AND LANG:pol':'';
+  const df=` AND (FIRST_PDATE:[${y0}-01-01 TO ${y1}-12-31])`;
+  try {
+    await sleep(400);
+    const d=await fetchJSON('https://www.ebi.ac.uk/europepmc/webservices/rest/search',
+      {query:base+lf+df,format:'json',pageSize:Math.min(max,1000),resultType:'core'});
+    const arts=d?.resultList?.result||[];
+    log(`[Europe PMC] Znaleziono ${arts.length} rekordów`,'log-ok');
+    for(const a of arts){
+      const al=a?.authorList?.author||[];
+      const authors=al.slice(0,5).map(x=>x.fullName||'').join('; ')+(al.length>5?' et al.':'');
+      res.push({title:(a.title||'').replace(/\.$/,''),authors,
+        year:String(a.pubYear||''),journal:a.journalTitle||'',
+        doi:a.doi||'',abstract:a.abstractText||'',citations:null,db:'Europe PMC',
+        lang:resolvedLang(a.language,a.title||'',lang)});
+    }
+  } catch(e){log(`[Europe PMC] Błąd: ${e.message}`,'log-err');}
+  log(`[Europe PMC] Pobrano ${res.length} rekordów`,'log-ok');
+  return res;
+}
+
+/* ══ API: OpenAlex ══════════════════════════════════════════════════════════ */
+async function searchOpenAlex(resolved, y0, y1, max, lang) {
+  log('[OpenAlex] Szukam…','log-info');
+  const res=[]; const base=buildQueryGeneral(resolved); if(!base) return res;
+  let filter=`publication_year:${y0}-${y1},type:article`;
+  if(lang==='en') filter+=',language:en';
+  if(lang==='pl') filter+=',language:pl';
+  try {
+    await sleep(400);
+    const pp=Math.min(max,200); let cursor='*',fetched=0;
+    while(fetched<max){
+      const d=await fetchJSON('https://api.openalex.org/works',
+        {search:base,filter,'per-page':Math.min(pp,max-fetched),mailto:'user@example.com',cursor});
+      const items=d?.results||[]; if(!items.length) break;
+      for(const a of items){
+        const auths=(a.authorships||[]).slice(0,5).map(x=>x?.author?.display_name||'').join('; ')+((a.authorships||[]).length>5?' et al.':'');
+        let doi=a.doi||''; if(doi.startsWith('https://doi.org/')) doi=doi.slice(16);
+        let abstract='';
+        const inv=a.abstract_inverted_index;
+        if(inv){try{const wp=[];for(const[w,ps]of Object.entries(inv))ps.forEach(p=>wp.push([p,w]));wp.sort((a,b)=>a[0]-b[0]);abstract=wp.map(x=>x[1]).join(' ');}catch(_){}}
+        res.push({title:a.display_name||'',authors:auths,year:String(a.publication_year||''),
+          journal:a?.primary_location?.source?.display_name||'',doi,abstract,
+          citations: typeof a.cited_by_count==='number' ? a.cited_by_count : null,
+          db:'OpenAlex',lang:resolvedLang(a.language,a.display_name||'',lang)});
+        fetched++; if(fetched>=max) break;
+      }
+      const nc=d?.meta?.next_cursor; if(!nc||items.length<pp) break;
+      cursor=nc; await sleep(400);
+    }
+  } catch(e){log(`[OpenAlex] Błąd: ${e.message}`,'log-err');}
+  log(`[OpenAlex] Pobrano ${res.length} rekordów`,'log-ok');
+  return res;
+}
+
+/* ══ API: Semantic Scholar ══════════════════════════════════════════════════ */
+async function searchSemanticScholar(resolved, y0, y1, max, lang) {
+  log('[Semantic Scholar] Szukam…','log-info');
+  const res=[]; const base=buildQueryGeneral(resolved); if(!base) return res;
+  let offset=0; const limit=Math.min(max,100);
+  try {
+    while(res.length<max){
+      await sleep(400);
+      const d=await fetchJSON('https://api.semanticscholar.org/graph/v1/paper/search',
+        {query:base,limit:Math.min(limit,max-res.length),offset,
+         fields:'title,authors,year,venue,externalIds,abstract,citationCount'});
+      const items=d?.data||[]; if(!items.length) break;
+      for(const a of items){
+        const y=a.year||0; if(y&&(y<y0||y>y1)) continue;
+        const auths=(a.authors||[]).slice(0,5).map(x=>x.name||'').join('; ')+((a.authors||[]).length>5?' et al.':'');
+        res.push({title:a.title||'',authors:auths,year:y?String(y):'',
+          journal:a.venue||'',doi:a?.externalIds?.DOI||'',
+          abstract:a.abstract||'',
+          citations: typeof a.citationCount==='number' ? a.citationCount : null,
+          db:'Semantic Scholar',lang:resolvedLang('',a.title||'',lang)});
+        if(res.length>=max) break;
+      }
+      offset+=items.length; if(offset>=(d?.total||0)||items.length<limit) break;
+    }
+  } catch(e){log(`[Semantic Scholar] Błąd: ${e.message}`,'log-err');}
+  log(`[Semantic Scholar] Pobrano ${res.length} rekordów`,'log-ok');
+  return res;
+}
+
+/* ══ Deduplicate (tracks hits + best abstract + best citations) ══════════════ */
+function deduplicate(recs) {
+  const doiMap   = new Map(); // doi → index in out
+  const titleMap = new Map(); // normalizedTitle → index in out
+  const out = [];
+  for (const r of recs) {
+    const doi = (r.doi||'').trim().toLowerCase();
+    const nt  = (r.title||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    let dupIdx = -1;
+    if (doi && doiMap.has(doi))   dupIdx = doiMap.get(doi);
+    else if (nt && titleMap.has(nt)) dupIdx = titleMap.get(nt);
+    if (dupIdx >= 0) {
+      out[dupIdx].hits = (out[dupIdx].hits||1) + 1;
+      if (!out[dupIdx].abstract && r.abstract) out[dupIdx].abstract = r.abstract;
+      if (out[dupIdx].citations === null && r.citations !== null) out[dupIdx].citations = r.citations;
+      continue;
+    }
+    const idx = out.length;
+    if (doi) doiMap.set(doi, idx);
+    if (nt)  titleMap.set(nt, idx);
+    out.push({...r, hits:1, _id:idx});
+  }
+  return out;
+}
+
+/* ══ Debounce wrapper for search ════════════════════════════════════════════ */
+function triggerSearch() {
+  clearTimeout(_searchTimer);
+  document.getElementById('btnSearch').disabled = true;
+  _searchTimer = setTimeout(startSearch, 350);
+}
+
+/* ══ Main search ════════════════════════════════════════════════════════════ */
+async function startSearch(){
+  const phrases=document.getElementById('phrases').value.split('\n').filter(p=>p.trim());
+  if(!phrases.length){alert('Wpisz co najmniej jedną frazę.'); document.getElementById('btnSearch').disabled=false; return;}
+  const y0  =parseInt(document.getElementById('yearFrom').value);
+  const y1  =parseInt(document.getElementById('yearTo').value);
+  const lang=document.querySelector('input[name=lang]:checked').value;
+  const max =parseInt(document.querySelector('input[name=maxres]:checked').value);
+  const dbs ={
+    pubmed:    document.getElementById('db_pubmed').checked,
+    europepmc: document.getElementById('db_europepmc').checked,
+    openalex:  document.getElementById('db_openalex').checked,
+    semantic:  document.getElementById('db_semantic').checked,
+  };
+  if(!Object.values(dbs).some(Boolean)){alert('Wybierz co najmniej jedną bazę.'); document.getElementById('btnSearch').disabled=false; return;}
+
+  lastPhrases=phrases; lastY0=y0; lastY1=y1;
+  selectedSet.clear();
+
+  document.getElementById('progressWrap').classList.add('on');
+  document.getElementById('resultSection').style.display='none';
+  document.getElementById('log').innerHTML='';
+  document.getElementById('filterAuthor').value='';
+  document.getElementById('filterJournal').value='';
+  document.getElementById('sortMode').value='default';
+  log('Rozpoczynam wyszukiwanie…','log-ok');
+  log(`Frazy: ${phrases.join(', ')}`);
+  log(`Lata: ${y0}–${y1} | Język: ${lang} | Maks/baza: ${max}`);
+
+  const resolved = await resolveTerms(phrases);
+
+  let combined=[];
+  if(dbs.pubmed)    combined=combined.concat(await searchPubMed(resolved,y0,y1,max,lang));
+  if(dbs.europepmc) combined=combined.concat(await searchEuropePMC(resolved,y0,y1,max,lang));
+  if(dbs.openalex)  combined=combined.concat(await searchOpenAlex(resolved,y0,y1,max,lang));
+  if(dbs.semantic)  combined=combined.concat(await searchSemanticScholar(resolved,y0,y1,max,lang));
+
+  log(`Łącznie: ${combined.length} | dedupl…`,'log-info');
+  allResults = deduplicate(combined);
+  log(`Unikalnych rekordów: ${allResults.length}`,'log-ok');
+
+  displayResults = [...allResults];
+  renderTable();
+  document.getElementById('btnSearch').disabled=false;
+  document.getElementById('progressWrap').classList.remove('on');
+}
+
+/* ══ Filter + Sort ══════════════════════════════════════════════════════════ */
+function applyFiltersAndSort() {
+  const fa   = (document.getElementById('filterAuthor').value||'').toLowerCase().trim();
+  const fj   = (document.getElementById('filterJournal').value||'').toLowerCase().trim();
+  const sort = document.getElementById('sortMode').value;
+
+  let filtered = allResults.filter(r => {
+    if (fa && !(r.authors||'').toLowerCase().includes(fa)) return false;
+    if (fj && !(r.journal||'').toLowerCase().includes(fj)) return false;
+    return true;
+  });
+
+  if (sort === 'relevance')      filtered = [...filtered].sort((a,b)=>(b.hits||1)-(a.hits||1));
+  else if (sort === 'year_desc') filtered = [...filtered].sort((a,b)=>(parseInt(b.year)||0)-(parseInt(a.year)||0));
+  else if (sort === 'year_asc')  filtered = [...filtered].sort((a,b)=>(parseInt(a.year)||0)-(parseInt(b.year)||0));
+  else if (sort === 'citations_desc') filtered = [...filtered].sort((a,b)=>(b.citations??-1)-(a.citations??-1));
+
+  displayResults = filtered;
+  renderTableBody();
+  const suffix = (fa||fj) ? ' (filtrowane)' : '';
+  document.getElementById('topbarSub').textContent =
+    `${filtered.length} / ${allResults.length} artykułów · "${lastPhrases.join('", "')}" · ${lastY0}–${lastY1}${suffix}`;
+}
+
+/* ══ Select all / single row ════════════════════════════════════════════════ */
+function toggleSelectAll(chk) {
+  document.querySelectorAll('.row-chk').forEach(cb => {
+    cb.checked = chk.checked;
+    const id = parseInt(cb.dataset.id);
+    chk.checked ? selectedSet.add(id) : selectedSet.delete(id);
+  });
+  updateExportSelBtn();
+}
+function toggleRow(chk) {
+  const id = parseInt(chk.dataset.id);
+  chk.checked ? selectedSet.add(id) : selectedSet.delete(id);
+  const allCbs = document.querySelectorAll('.row-chk');
+  const checkedCbs = document.querySelectorAll('.row-chk:checked');
+  const allChk = document.getElementById('chkAll');
+  if (allChk) {
+    allChk.checked = checkedCbs.length === allCbs.length && allCbs.length > 0;
+    allChk.indeterminate = checkedCbs.length > 0 && checkedCbs.length < allCbs.length;
+  }
+  updateExportSelBtn();
+}
+function updateExportSelBtn() {
+  const btn = document.getElementById('btnExportSel');
+  if (!btn) return;
+  btn.innerHTML = selectedSet.size > 0
+    ? `<svg width="13" height="13"><use href="#i-download"/></svg> Eksportuj zaznaczone (${selectedSet.size})`
+    : `<svg width="13" height="13"><use href="#i-download"/></svg> Eksportuj zaznaczone`;
+}
+
+/* ══ Copy DOI ═══════════════════════════════════════════════════════════════ */
+async function copyDOI(btn, doi) {
+  try {
+    await navigator.clipboard.writeText(doi);
+    const orig = btn.innerHTML;
+    btn.innerHTML = `<svg width="11" height="11"><use href="#i-check"/></svg> Skopiowano`;
+    btn.style.color = '#22c55e'; btn.style.borderColor = 'rgba(34,197,94,.4)';
+    setTimeout(() => { btn.innerHTML = orig; btn.style.color=''; btn.style.borderColor=''; }, 1800);
+  } catch(_) {}
+}
+
+/* ══ Citation preview (APA) ════════════════════════════════════════════════ */
+function buildCitation(r) {
+  const authors = r.authors
+    ? r.authors.replace(/ et al\.$/, ' i in.')
+    : 'Autor nieznany';
+  const year  = r.year  || 'b.d.';
+  const title = (r.title||'').replace(/\.$/,'');
+  const journal = r.journal || '';
+  const doi = r.doi ? `https://doi.org/${r.doi}` : '';
+  let cite = `${authors} (${year}). ${title}.`;
+  if (journal) cite += ` ${journal}.`;
+  if (doi) cite += ` ${doi}`;
+  return cite.trim();
+}
+function toggleCitation(btn, id) {
+  const box = document.getElementById(`cite-${id}`);
+  const isOpen = box.style.display === 'block';
+  if (!isOpen) {
+    const r = allResults.find(x => x._id === id);
+    if (r && !box.querySelector('.cite-text')) {
+      box.innerHTML = `<span class="cite-text">${escHtml(buildCitation(r))}</span>
+        <button class="cite-copy-btn" onclick="copyCitation(this, ${id})">
+          <svg width="10" height="10"><use href="#i-copy"/></svg> Kopiuj
+        </button>`;
+    }
+    box.style.display = 'block';
+    btn.innerHTML = `<svg width="11" height="11"><use href="#i-chev-u"/></svg><span>Ukryj cytat</span>`;
+  } else {
+    box.style.display = 'none';
+    btn.innerHTML = `<svg width="11" height="11"><use href="#i-quote"/></svg><span>Cytuj (APA)</span>`;
+  }
+}
+async function copyCitation(btn, id) {
+  const r = allResults.find(x => x._id === id);
+  if (!r) return;
+  try {
+    await navigator.clipboard.writeText(buildCitation(r));
+    const orig = btn.innerHTML;
+    btn.innerHTML = `<svg width="10" height="10"><use href="#i-check"/></svg> Skopiowano`;
+    btn.style.color = '#22c55e';
+    setTimeout(() => { btn.innerHTML = orig; btn.style.color = ''; }, 1800);
+  } catch(_) {}
+}
+
+/* ══ Title / Abstract translation ═══════════════════════════════════════════ */
+async function translateTitle(btn, id){
+  const r=allResults.find(x=>x._id===id); if(!r) return;
+  const div=document.getElementById(`tt-${id}`);
+  if(titleTransCache.has(r.title)){
+    div.textContent=titleTransCache.get(r.title); div.style.display='block'; btn.style.display='none'; return;
+  }
+  setSpinner(btn,'Tłumaczę…');
+  const sl=r.lang&&r.lang!=='pl'?r.lang:'en';
+  try {
+    const t=await translateChunked(r.title,sl);
+    if(t&&t!==r.title){ titleTransCache.set(r.title,t); div.textContent=t; div.style.display='block'; btn.style.display='none'; }
+    else { resetBtn(btn,'i-translate','Tłumacz tytuł'); }
+  } catch(_){ resetBtn(btn,'i-translate','Tłumacz tytuł'); }
+}
+async function translateAbstract(btn, id){
+  const r=allResults.find(x=>x._id===id); if(!r||!r.abstract) return;
+  const div=document.getElementById(`at-${id}`);
+  if(absTransCache.has(r.abstract)){
+    div.textContent=absTransCache.get(r.abstract); div.style.display='block'; btn.style.display='none'; return;
+  }
+  setSpinner(btn,'Tłumaczę…');
+  const sl=r.lang&&r.lang!=='pl'?r.lang:'en';
+  try {
+    const t=await translateChunked(r.abstract,sl);
+    if(t&&t!==r.abstract){ absTransCache.set(r.abstract,t); div.textContent=t; div.style.display='block'; btn.style.display='none'; }
+    else { resetBtn(btn,'i-translate','Tłumacz abstrakt'); }
+  } catch(_){ resetBtn(btn,'i-translate','Tłumacz abstrakt'); }
+}
+function setSpinner(btn,label){
+  btn.disabled=true;
+  btn.innerHTML=`<svg width="11" height="11" style="animation:spin .8s linear infinite"><use href="#i-spin"/></svg><span>${label}</span>`;
+}
+function resetBtn(btn,icon,label){
+  btn.disabled=false;
+  btn.innerHTML=`<svg width="11" height="11"><use href="#${icon}"/></svg><span>${label}</span>`;
+}
+
+/* ══ Render ═════════════════════════════════════════════════════════════════ */
+function dbTagHtml(db){
+  const m={'PubMed':'pubmed','Europe PMC':'europepmc','OpenAlex':'openalex','Semantic Scholar':'semantic'};
+  return `<span class="db-tag db-tag-${m[db]||''}">${db}</span>`;
+}
+function dbRow(db){
+  const m={'PubMed':'db-pubmed','Europe PMC':'db-europepmc','OpenAlex':'db-openalex','Semantic Scholar':'db-semantic'};
+  return m[db]||'';
+}
+function langTagHtml(l){
+  if(l==='en') return `<span class="lang-tag lang-en">EN</span>`;
+  if(l==='pl') return `<span class="lang-tag lang-pl">PL</span>`;
+  return l?`<span class="lang-tag lang-xx">${l.toUpperCase()}</span>`:`<span class="lang-tag lang-xx">?</span>`;
+}
+
+function renderTable() {
+  /* stats */
+  const counts = {};
+  for (const r of allResults) counts[r.db] = (counts[r.db]||0) + 1;
+  document.getElementById('statsRow').innerHTML =
+    Object.entries(counts).map(([db,n])=>
+      `<div class="stat-card"><div class="n">${n}</div><div class="l">${db}</div></div>`
+    ).join('') +
+    `<div class="stat-card stat-total"><div class="n">${allResults.length}</div><div class="l">Łącznie</div></div>`;
+
+  document.getElementById('topbarSub').textContent =
+    `${allResults.length} artykułów · "${lastPhrases.join('", "')}" · ${lastY0}–${lastY1}`;
+
+  renderTableBody();
+  document.getElementById('resultSection').style.display = 'block';
+}
+
+function renderTableBody() {
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = '';
+  const chkAll = document.getElementById('chkAll');
+  if (chkAll) { chkAll.checked = false; chkAll.indeterminate = false; }
+
+  displayResults.forEach((r, i) => {
+    const id = r._id;
+    const showTrans = detectLang(r.title) !== 'pl';
+    const hitsBadge = r.hits > 1 ? `<span class="hits-badge">★ ${r.hits} bazy</span>` : '';
+
+    /* ── DOI row (inside article cell) ── */
+    const doiRow = r.doi
+      ? `<div class="art-meta" style="margin-top:5px">
+           <span class="art-doi">${escHtml(r.doi)}</span>
+           <span style="display:inline-flex;gap:4px;margin-top:3px">
+             <a class="btn-open" href="https://doi.org/${encodeURIComponent(r.doi)}" target="_blank">
+               <svg width="11" height="11"><use href="#i-link"/></svg> Otwórz
+             </a>
+             <button class="btn-copy-doi" onclick="copyDOI(this,'${escHtml(r.doi).replace(/'/g,"\\'")}')">
+               <svg width="11" height="11"><use href="#i-copy"/></svg> Kopiuj DOI
+             </button>
+           </span>
+         </div>`
+      : '';
+
+    /* ── Abstract (inside article cell) ── */
+    const absBlock = r.abstract
+      ? `<div class="abstract-text" id="ab-${id}" style="margin-top:6px">${escHtml(r.abstract)}</div>
+         <div class="btn-xl-row">
+           <button class="abstract-toggle" onclick="toggleAbs(${id})">
+             <svg width="11" height="11" id="ab-ic-${id}"><use href="#i-chev-d"/></svg>
+             <span id="ab-lb-${id}">Rozwiń abstrakt</span>
+           </button>
+           ${showTrans?`<button class="btn-xl" onclick="translateAbstract(this,${id})">
+             <svg width="11" height="11"><use href="#i-translate"/></svg><span>Tłumacz abstrakt</span>
+           </button>`:''}
+         </div>
+         <div class="abstract-translation" id="at-${id}"></div>`
+      : '';
+
+    /* ── Full article cell ── */
+    const articleCell = `
+      <div class="title-text">${escHtml(r.title)}${hitsBadge}</div>
+      <div class="art-meta">
+        ${r.authors ? `<span>${escHtml(r.authors)}</span>` : ''}
+        ${r.authors && r.journal ? ' · ' : ''}
+        ${r.journal ? `<span style="font-style:italic">${escHtml(r.journal)}</span>` : ''}
+      </div>
+      ${doiRow}
+      <div class="btn-xl-row" style="margin-top:6px">
+        <button class="btn-xl" onclick="toggleCitation(this,${id})">
+          <svg width="11" height="11"><use href="#i-quote"/></svg><span>Cytuj (APA)</span>
+        </button>
+        ${showTrans?`<button class="btn-xl" onclick="translateTitle(this,${id})">
+          <svg width="11" height="11"><use href="#i-translate"/></svg><span>Tłumacz tytuł</span>
+        </button>`:''}
+      </div>
+      <div class="cite-box" id="cite-${id}"></div>
+      <div class="title-translation" id="tt-${id}"></div>
+      ${absBlock}`;
+
+    /* ── Citations cell ── */
+    const citCell = r.citations !== null
+      ? `<span class="cit-count">${r.citations.toLocaleString('pl-PL')}</span>`
+      : `<span class="cit-na">—</span>`;
+
+    const tr = document.createElement('tr');
+    tr.className = dbRow(r.db);
+    tr.innerHTML = `
+      <td style="text-align:center;width:32px"><input type="checkbox" class="row-chk" data-id="${id}" onchange="toggleRow(this)" ${selectedSet.has(id)?'checked':''}></td>
+      <td style="text-align:center;color:#374151;font-size:11px;width:30px">${i+1}</td>
+      <td>${articleCell}</td>
+      <td style="text-align:center;color:#9ca3af;width:46px">${r.year}</td>
+      <td style="text-align:center;width:52px">${citCell}</td>
+      <td style="text-align:center;width:46px">${langTagHtml(r.lang)}</td>
+      <td style="width:110px">${dbTagHtml(r.db)}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  updateExportSelBtn();
+}
+
+function toggleAbs(id){
+  const el=document.getElementById(`ab-${id}`);
+  const ic=document.getElementById(`ab-ic-${id}`);
+  const lb=document.getElementById(`ab-lb-${id}`);
+  if(!el) return;
+  const open=el.classList.toggle('open');
+  ic.innerHTML=`<use href="${open?'#i-chev-u':'#i-chev-d'}"/>`;
+  lb.textContent=open?'Zwiń':'Rozwiń';
+}
+
+/* ══ Excel export ═══════════════════════════════════════════════════════════ */
+function exportExcel(selectedOnly){
+  const toExport = selectedOnly && selectedSet.size > 0
+    ? allResults.filter(r => selectedSet.has(r._id))
+    : allResults;
+  if(!toExport.length){ alert('Brak rekordów do eksportu.'); return; }
+
+  const wb=XLSX.utils.book_new();
+  const wsData=[['Lp.','Tytuł','Tłumaczenie tytułu (PL)','Autorzy','Rok','Cytowania','Język',
+                 'Czasopismo','DOI','Abstrakt','Tłumaczenie abstraktu (PL)','Baza danych','Trafność (bazy)']];
+  toExport.forEach((r,i)=>wsData.push([
+    i+1, r.title, titleTransCache.get(r.title)||'',
+    r.authors, r.year, r.citations!==null?r.citations:'',
+    (r.lang||'').toUpperCase(), r.journal, r.doi, r.abstract,
+    absTransCache.get(r.abstract)||'', r.db, r.hits||1
+  ]));
+  const ws=XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols']=[{wch:5},{wch:55},{wch:50},{wch:35},{wch:6},{wch:8},{wch:6},{wch:28},{wch:26},{wch:70},{wch:65},{wch:16},{wch:10}];
+  XLSX.utils.book_append_sheet(wb,ws,'Wyniki');
+
+  const counts={};
+  for(const r of allResults) counts[r.db]=(counts[r.db]||0)+1;
+  const ws2=XLSX.utils.aoa_to_sheet([
+    ['NareQuarry — Przeszukiwarka Literatury Naukowej i Medycznej'],
+    [`Data: ${new Date().toLocaleString('pl-PL')}`],
+    [`Frazy: ${lastPhrases.join(', ')}`],
+    [`Lata: ${lastY0}–${lastY1}`],[],
+    ['Baza danych','Liczba wyników'],
+    ...Object.entries(counts),
+    ['ŁĄCZNIE (po deduplikacji)',allResults.length],
+    selectedOnly&&selectedSet.size>0 ? ['Eksportowanych (zaznaczone)',toExport.length] : []
+  ].filter(r=>r.length));
+  ws2['!cols']=[{wch:40},{wch:25}];
+  XLSX.utils.book_append_sheet(wb,ws2,'Statystyki');
+  XLSX.writeFile(wb, selectedOnly&&selectedSet.size>0 ? 'NareQuarry_zaznaczone.xlsx' : 'NareQuarry_wyniki.xlsx');
+}
+</script>
+</body>
+</html>
